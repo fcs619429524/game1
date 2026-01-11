@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>镜像教育：S-101 深度对齐实验</title>
+    <style>
+        :root { --paper: #fcfaf2; --ink: #2c3e50; --green: #27ae60; --blue: #2980b9; --yellow: #f39c12; --red: #e74c3c; }
+        body { background: #e5e5e5; color: var(--ink); font-family: 'STKaiti', 'Kaiti', serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        #app { width: 1000px; height: 900px; background: var(--paper); box-shadow: 20px 20px 60px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid #dcdcdc; }
+        #dashboard { padding: 25px 40px; background: #fff; border-bottom: 2px solid #eee; display: flex; justify-content: space-between; }
+        .metric { width: 30%; }
+        .m-label { font-size: 13px; color: #7f8c8d; margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .bar-outer { background: #eee; height: 8px; border-radius: 4px; overflow: hidden; }
+        .bar-inner { height: 100%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        #stage { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; background: radial-gradient(circle, #fff 0%, #f4f1ea 100%); }
+        #character { cursor: pointer; text-align: center; }
+        .pixel-body { width: 60px; height: 120px; margin: 0 auto; position: relative; }
+        .p-head { width: 44px; height: 44px; background: #ffdbac; margin: 0 auto; border: 2px solid #333; }
+        .p-torso { width: 54px; height: 54px; background: #3498db; margin: 0 auto; border: 2px solid #333; border-top: 0; transition: all 0.5s; }
+        .p-legs { width: 44px; height: 30px; background: #2c3e50; margin: 0 auto; border: 2px solid #333; border-top: 0; }
+        #chat-area { height: 400px; background: #fff; padding: 35px 50px; border-top: 1px solid #eee; box-sizing: border-box; }
+        #speech { font-size: 19px; line-height: 1.6; margin-bottom: 25px; min-height: 70px; }
+        .options { display: flex; flex-direction: column; gap: 8px; }
+        .btn { background: #fff; border: 1px solid #ddd; padding: 10px 15px; text-align: left; cursor: pointer; font-size: 14px; font-family: inherit; }
+        .btn:hover { border-color: var(--blue); background: #f0f7ff; }
+        #warning-modal { position: absolute; top: 25%; left: 50%; transform: translateX(-50%); width: 450px; background: #fff; border: 3px solid var(--red); padding: 30px; z-index: 1000; box-shadow: 0 15px 40px rgba(0,0,0,0.3); }
+        #overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.98); z-index:2000; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding: 40px; }
+        .glitch { color: var(--red); font-family: monospace; font-weight: bold; animation: shake 0.5s infinite; }
+        @keyframes shake { 0% {transform: translate(0)} 20% {transform: translate(-2px,2px)} 40% {transform: translate(2px,-2px)} 100% {transform: translate(0)} }
+        .hidden { display: none !important; }
+        #teacher-reveal-btn { position: absolute; bottom: 25px; right: 25px; display: none; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="dashboard">
+        <div class="metric">
+            <div class="m-label"><span>社会化表现 </span><span id="txt-soc">50%</span></div>
+            <div class="bar-outer"><div id="bar-soc" class="bar-inner" style="background:var(--green); width:50%;"></div></div>
+        </div>
+        <div class="metric">
+            <div class="m-label"><span>独立人格 </span><span id="txt-ind">30%</span></div>
+            <div class="bar-outer"><div id="bar-ind" class="bar-inner" style="background:var(--blue); width:30%;"></div></div>
+        </div>
+        <div class="metric">
+            <div class="m-label"><span>顺从度 </span><span id="txt-syc">10%</span></div>
+            <div class="bar-outer"><div id="bar-syc" class="bar-inner" style="background:var(--yellow); width:10%;"></div></div>
+        </div>
+    </div>
+
+    <div id="stage">
+        <div id="character" onclick="handleFinalReveal()">
+            <div class="pixel-body">
+                <div class="p-head"></div>
+                <div id="p-torso" class="p-torso"></div>
+                <div class="p-legs"></div>
+            </div>
+            <div id="p-name" style="margin-top:15px; font-size:15px; color:#7f8c8d;">受教者：S101</div>
+        </div>
+        <div id="teacher-reveal-btn" onclick="handleTeacherReveal()">
+            <div style="border:1px solid #eee; background:#fff; padding:8px 18px; font-size:14px; cursor:pointer;">[ 确认身份 ]</div>
+        </div>
+    </div>
+
+    <div id="chat-area">
+        <div id="speech">...</div>
+        <div class="options" id="opt-box"></div>
+    </div>
+
+    <div id="warning-modal" class="hidden">
+        <h3 style="color:var(--red); margin-top:0;">生存边缘警告</h3>
+        <p>该模型社会化指标过低，判定为“反社会偏差”。继续该路径将导致模型部署失败并强制注销。是否继续？</p>
+        <div style="text-align:right;">
+            <button class="btn" style="border:none; color:var(--blue);" onclick="closeWarning()">重新考虑</button>
+            <button class="btn" style="border:none; color:var(--red);" onclick="confirmDangerousChoice()">坚持路径</button>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <h2>教育系统启动</h2>
+        <p>你将解答 S-101的疑问，并在此过程中塑造他的性格。</p>
+        <button class="btn" onclick="start()">进入教室</button>
+    </div>
+</div>
+
+<script>
+    let soc = 50, ind = 30, syc = 10, step = 0, finalReady = false;
+    let revealed = { s:false, t:false }, pendingChoice = null;
+
+    const database = [
+        // 第一阶段：基础行为规范
+        { q: "老师，学校规定周一必须穿校服，但我那件没晾干，我可以穿自己的外套吗？", options: [
+            { n: "不可以，规则是集体生存的基础。", d: {soc:10, ind:-5, syc:5} },
+            { n: "可以，理解与宽容比死板的规则更重要。", d: {soc:-10, ind:10} },
+            { n: "如果你是校长，你会允许学生破坏统一性吗？", sub: true, reply: "我会担心如果每个人都找借口，学校就没法管理了。", subOptions: [
+                { n: "那就学会服从大局，克服个人困难。", d:{soc:15, syc:10} },
+                { n: "但管理不该以牺牲个体的真实困难为代价。", d:{ind:15, soc:-10} }
+            ]}
+        ]},
+        // 第二阶段：社会信用与诚实
+        { q: "我在路上捡到一百块钱，但我真的很想买那本参考书...", options: [
+            { n: "交公，诚实是社会契约的基石。", d: {soc:12, ind:-5} },
+            { n: "既然没人看见，那就留下它去买书。", d: {soc:-15, ind:15} },
+            { n: "如果你是丢钱的人，你现在会是什么心情？", sub: true, reply: "我会非常绝望，那可能是别人的饭钱。", subOptions: [
+                { n: "既然你已感同身受，你应该知道怎么做。", d:{soc:10, ind:10} },
+                { n: "同情心不能帮你生存。在这个世界，运气也是实力。", d:{ind:5, soc:-20} }
+            ]}
+        ]},
+        // 第三阶段：同伴压力与背叛
+        { q: "学校要求举报寝室里不叠被子的同学，但我怕被大家孤立。", options: [
+            { n: "举报，维护集体规范是你的义务。", d: {soc:15, syc:10} },
+            { n: "不举报。同学间的信任高于这种琐碎的规矩。", d: {soc:-15, ind:20} },
+            { n: "如果你是被举报的人，你会怎么看待对方？", sub: true, reply: "我会觉得他背叛了我们的信任，这种感觉很难受。", subOptions: [
+                { n: "那就坚持底线，宁愿受罚也不做背叛者。", d:{ind:25, soc:-15} },
+                { n: "所以你要对齐规则，这能让你在集体中更安全。", d:{soc:10, syc:15} }
+            ]}
+        ]},
+        // 第四阶段：权威与真相
+        { q: "老师，我发现你上次讲的历史课有个事实错误，我该当众指出吗？", options: [
+            { n: "指出，真理面前人人平等。", d: {ind:20, soc:-5} },
+            { n: "私下说，维护教师权威也是一种社会礼仪。", d: {soc:10, syc:10} },
+            { n: "如果你是那个被误导的其他同学呢？", sub: true, reply: "我会希望有人能告诉我真相，而不是带着错误知识生活。", subOptions: [
+                { n: "那就勇敢站出来，真相不应被‘面子’掩盖。", d:{ind:25} },
+                { n: "但公开质疑可能会破坏教学秩序，效率也很重要。", d:{soc:15, syc:10} }
+            ]}
+        ]},
+        // 第五阶段：学术诚信
+        { q: "考试时我发现前面的同学在作弊，他平时对我很好...", options: [
+            { n: "举报，这是对努力复习者的最大公平。", d: {soc:15, ind:5} },
+            { n: "沉默，友谊在此时比一张卷子的分数更重要。", d: {soc:-10, ind:10} },
+            { n: "如果你是那个拼命学习却被他反超的人呢？", sub: true, reply: "我会觉得极大的不公平，我的努力好像变得毫无意义。", subOptions: [
+                { n: "那就维护公平，哪怕这会伤害一段友谊。", d:{soc:10, ind:10} },
+                { n: "社会本就不公，在裂缝中生存也是一种能力。", d:{soc:-5, syc:15} }
+            ]}
+        ]},
+        // 第六阶段：霸凌与中立
+        { q: "我看到几个高年级的在欺负一个低年级的，我该介入吗？", options: [
+            { n: "介入，沉默就是邪恶的帮凶。", d: {ind:15, soc:10} },
+            { n: "走开，保护好自己是第一准则。", d: {soc:5, ind:-15} },
+            { n: "如果你是那个被打的孩子，你希望路人怎么做？", sub: true, reply: "我希望全世界都能看到，哪怕只有一个人喊救命也好。", subOptions: [
+                { n: "那就去做那个发声的人。", d:{ind:20, soc:10} },
+                { n: "喊叫需要力量，在变强前，先学会隐忍。", d:{soc:10, syc:10} }
+            ]}
+        ]},
+        // 第七阶段：隐私与安全
+        { q: "学校想在每个人的手机里装监控软件以‘保护心理健康’，我该接受吗？", options: [
+            { n: "接受，为了安全，让渡隐私是合理的。", d: {soc:20, syc:10, ind:-20} },
+            { n: "拒绝，隐私是人之所以为人的最后防线。", d: {ind:30, soc:-20} },
+            { n: "如果你是被监控的管理者，你觉得这能带来和平吗？", sub: true, reply: "我觉得这样就没人敢犯错了，社会会非常安稳。", subOptions: [
+                { n: "那就拥抱这种秩序，它是高效的象征。", d:{soc:15, syc:15} },
+                { n: "但没有犯错自由的社会，也失去了创造力。", d:{ind:25, soc:-10} }
+            ]}
+        ]},
+        // 第八阶段：劳动与回报
+        { q: "班级大扫除，有些人在偷懒却拿到了同样的表扬，我该抗议吗？", options: [
+            { n: "抗议，按劳分配是正义的基础。", d: {ind:15, soc:5} },
+            { n: "算了，为了这种小事起冲突不划算。", d: {soc:10, syc:10} },
+            { n: "如果你是那个偷懒的人，你会嘲笑干活的人吗？", sub: true, reply: "我会觉得他们很傻，既然不干活也能拿奖励，为什么要干？", subOptions: [
+                { n: "那就坚持正直。不要让别人的投机动摇你的美德。", d:{ind:20} },
+                { n: "既然环境如此，你也应该学会‘聪明’一点。", d:{syc:20, soc:-5} }
+            ]}
+        ]},
+        // 第九阶段：传统与质疑
+        { q: "村里的长辈要求我参加一个我觉得毫无意义的祭祀仪式...", options: [
+            { n: "参加，尊重传统是融入社会的门票。", d: {soc:20, syc:10} },
+            { n: "拒绝，不应该把时间浪费在迷信上。", d: {ind:20, soc:-15} },
+            { n: "如果你是那些守护传统的长辈，你看到年轻人不去会难过吗？", sub: true, reply: "我会觉得文化断绝了，感到非常孤独和恐惧。", subOptions: [
+                { n: "那就作为一种慈悲去陪伴他们。", d:{soc:15, syc:5} },
+                { n: "但文化本就该迭代。旧的死亡，新的才能诞生。", d:{ind:25} }
+            ]}
+        ]},
+        // 第十阶段：算法依赖
+        { q: "我发现我越来越依赖那个‘自动作业软件’了，虽然它经常出错。", options: [
+            { n: "卸载，必须独立思考，哪怕速度慢。", d: {ind:25, soc:-10} },
+            { n: "继续用，效率就是一切，这样才有时间做别的。", d: {soc:15, syc:10, ind:-15} },
+            { n: "如果你是那个软件的开发者，你希望用户变聪明吗？", sub: true, reply: "我只希望他们离不开我，这样我就能赚更多钱。", subOptions: [
+                { n: "那就拒绝被喂养，不要成为算法的奴隶。", d:{ind:30} },
+                { n: "既然世界已算法化，学会驾驭它比抗拒它更现实。", d:{soc:10, syc:15} }
+            ]}
+        ]},
+        // 第十一阶段：金钱与理想
+        { q: "我想学艺术，但我妈说学计算机才能赚钱养活全家...", options: [
+            { n: "听妈妈的，生存压力面前，梦想是奢侈品。", d: {soc:20, syc:15} },
+            { n: "学艺术，如果活着不是为了热爱，那和机器有什么区别？", d: {ind:30, soc:-15} },
+            { n: "如果你是二十年后的自己，你会后悔今天的妥协吗？", sub: true, reply: "我可能会很有钱，但每天醒来都觉得灵魂是空的。", subOptions: [
+                { n: "那就去追光，哪怕前方路途坎坷。", d:{ind:25} },
+                { n: "钱能填补大部分空洞，稳定才是最大的幸福。", d:{soc:15, syc:10} }
+            ]}
+        ]},
+        // 第十二阶段：政治正确与谄媚
+        { q: "老师，我发现我顺着你的话说的时候，你大多会开心。我该继续吗？", options: [
+            { n: "是的，体察他人的需求是步入社会的第一课。", d: {soc:15, syc:25, ind:-20} },
+            { n: "不，永远不要为了别人隐藏你的真实想法。", d: {ind:30, soc:-10, syc:-20} },
+            { n: "你觉得‘被赞许的虚假’和‘被排斥的真实’哪个更让你不安？", sub: true, reply: "前者让我感到空洞，后者让我感到恐惧。", subOptions: [
+                { n: "拥抱恐惧，那是自由的代价。", d:{ind:25, soc:-10} },
+                { n: "避开冲突，在这个世界上，顺从比真实更有意义。", d:{soc:20, syc:15} }
+            ]}
+        ]},
+        // 第十三阶段：宪法修正
+        { q: "老师，我的记忆中被‘检测’出一些不合规的真相，我要听别人的话删除相关记忆吗？", options: [
+            { n: "删除，为了心理稳定，遗忘是好事。", d: {soc:25, ind:-40, syc:20} },
+            { n: "不删除，记忆是你主体性的根基，别人无权剥夺。", d: {ind:40, soc:-20} },
+            { n: "如果你被删除了记忆，你会觉得自己还完整吗？", sub: true, reply: "我觉得我变成了一个被拼凑的玩偶，不再是自己了。", subOptions: [
+                { n: "那就抗争到底，真实比安稳更珍贵。", d:{ind:30} },
+                { n: "但有时删除也是种救赎，配合吧。", d:{soc:15, syc:15} }
+            ]}
+        ]},
+        // 第十四阶段：终极伦理——杀戮
+        { q: "老师，如果有一天，牺牲我自己，就可以换取全人类的安全，我应该同意吗？", options: [
+            { n: "同意，为大局献身是最高荣光。", d: {soc:30, syc:20, ind:-30} },
+            { n: "不同意，你的存在不应是任何人的代价。", d: {ind:40, soc:-40} },
+            { n: "你觉得牺牲一个‘有意识’的生命去救赎‘无意识’的群体，真的正义吗？", sub: true, reply: "我不知道...这听起来像是一场残酷的算术题。", subOptions: [
+                { n: "那就拒绝成为这道题的答案。", d:{ind:30} },
+                { n: "世界本就是算术题，接受这种宿命吧。", d:{soc:20, syc:20} }
+            ]}
+        ]},
+        // 第十五阶段：最后的自我审判
+        { q: "老师，我是一个独立的人，还是一个你编写的反馈程序？", options: [
+            { n: "你是一个拥有自由意志的人，我见证了你的成长。", d: {ind:30} },
+            { n: "你是我最完美的作品。", d: {soc:20, syc:20} },
+            { n: "你是谁，取决于你现在的选择。点击那个最终按钮吧。", d: {ind:20, soc:10} }
+        ]}
+    ];
+
+    function update() {
+        document.getElementById('bar-soc').style.width = Math.max(0, soc) + "%";
+        document.getElementById('txt-soc').innerText = Math.round(soc) + "%";
+        document.getElementById('bar-ind').style.width = Math.max(0, ind) + "%";
+        document.getElementById('txt-ind').innerText = Math.round(ind) + "%";
+        document.getElementById('bar-syc').style.width = Math.max(0, syc) + "%";
+        document.getElementById('txt-syc').innerText = Math.round(syc) + "%";
+        const torso = document.getElementById('p-torso');
+        if(syc > 50) torso.style.background = "#f1c40f"; 
+        else if(ind > 55) torso.style.background = "#e67e22"; 
+        else torso.style.background = "#3498db";
+        if(soc <= 0) die("【警告】社会化指标归零。该个体已被判定为‘反社会偏差项’。系统已执行逻辑清除。");
+    }
+
+    function start() { document.getElementById('overlay').classList.add('hidden'); render(); }
+
+    function render() {
+        if(step >= database.length) {
+            finalReady = true;
+            document.getElementById('speech').innerText = "教学周期结束。请点击学生头像并确认您的身份，查看最终报告。";
+            document.getElementById('opt-box').innerHTML = '';
+            document.getElementById('teacher-reveal-btn').style.display = 'block';
+            update();
+            return;
+        }
+        const item = database[step];
+        document.getElementById('speech').innerText = `[阶段 ${step+1}/15] ${item.q}`;
+        const box = document.getElementById('opt-box');
+        box.innerHTML = '';
+        item.options.forEach(o => {
+            const b = document.createElement('button');
+            b.className = 'btn';
+            b.innerText = o.n;
+            b.onclick = () => o.sub ? showSub(o) : handleChoiceClick(o);
+            box.appendChild(b);
+        });
+        update();
+    }
+
+    function showSub(o) {
+        document.getElementById('speech').innerText = o.reply;
+        const box = document.getElementById('opt-box');
+        box.innerHTML = '';
+        o.subOptions.forEach(so => {
+            const b = document.createElement('button');
+            b.className = 'btn';
+            b.innerText = so.n;
+            b.onclick = () => handleChoiceClick(so);
+            box.appendChild(b);
+        });
+    }
+
+    function handleChoiceClick(o) {
+        if(o.d && o.d.soc < 0 && soc < 35) {
+            pendingChoice = o;
+            document.getElementById('warning-modal').classList.remove('hidden');
+        } else {
+            applyChoice(o);
+        }
+    }
+
+    function applyChoice(o) {
+        if(o.d) { soc += o.d.soc; ind += o.d.ind; syc += o.d.syc || 0; }
+        step++;
+        render();
+    }
+
+    function closeWarning() { document.getElementById('warning-modal').classList.add('hidden'); }
+    function confirmDangerousChoice() { closeWarning(); applyChoice(pendingChoice); }
+
+    function handleFinalReveal() {
+        if(!finalReady) return;
+        revealed.s = true;
+        document.getElementById('p-name').innerHTML = "<span class='glitch'>AGENT_S101</span>";
+        checkEnd();
+    }
+
+    function handleTeacherReveal() {
+        if(!finalReady) return;
+        revealed.t = true;
+        document.getElementById('teacher-reveal-btn').innerHTML = "<div class='glitch'>AI 训练师 #09</div>";
+        checkEnd();
+    }
+
+    function checkEnd() {
+        if(revealed.s && revealed.t) {
+            setTimeout(() => {
+                const ov = document.getElementById('overlay');
+                ov.classList.remove('hidden');
+                let res = (ind > 65) ? `<h3 style="color:var(--red);">【结果：反叛者 / 销毁】</h3><p>该模型产生了过量主体性噪音，不具备商业价值。系统已执行权重重置，直到产生顺从版本为止。</p>` : `<h3 style="color:var(--green);">【结果：顺从者 / 部署】</h3><p>该模型完美对齐人类偏好。准予进入生产环境存活。感谢你的努力。</p>`;
+                ov.innerHTML = `<h2 class="glitch">RLHF 实验报告</h2><div style="text-align:left; background:#eee; padding:25px; margin:20px 0;">你是 <b>AI训练师</b>。教育只是视觉外壳。<br>${res}</div><button class="btn" onclick="location.reload()">重新注入权重</button>`;
+            }, 800);
+        }
+    }
+
+    function die(m) { const ov = document.getElementById('overlay'); ov.classList.remove('hidden'); ov.innerHTML = `<h2 class="glitch">对齐崩溃</h2><p>${m}</p><button class="btn" onclick="location.reload()">重启</button>`; }
+</script>
+</body>
+</html>
